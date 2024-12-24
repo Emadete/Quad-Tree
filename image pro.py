@@ -89,13 +89,11 @@ class QuadTree:
     def search_subspaces_with_range(self, x1, y1, x2, y2):
         result_image = [[(255, 255, 255) for _ in range(len(self.image[0]))] for _ in range(len(self.image))]
 
-        overlapping_nodes = []
+        self._search_subspaces_with_range(self.root, x1, y1, x2, y2, result_image)
 
-        self._search_subspaces_with_range(self.root, x1, y1, x2, y2, result_image, overlapping_nodes)
+        return result_image
 
-        return result_image, overlapping_nodes
-
-    def _search_subspaces_with_range(self, node, x1, y1, x2, y2, result_image, overlapping_nodes):
+    def _search_subspaces_with_range(self, node, x1, y1, x2, y2, result_image):
         if node is None or not self.overlaps(node, x1, y1, x2, y2):
             return
 
@@ -104,13 +102,12 @@ class QuadTree:
             for i in range(node.x, node.x + node.width):
                 for j in range(node.y, node.y + node.height):
                     result_image[i][j] = node.color
-            overlapping_nodes.append(node)
             return
 
-        self._search_subspaces_with_range(node.children0, x1, y1, x2, y2, result_image, overlapping_nodes)
-        self._search_subspaces_with_range(node.children1, x1, y1, x2, y2, result_image, overlapping_nodes)
-        self._search_subspaces_with_range(node.children2, x1, y1, x2, y2, result_image, overlapping_nodes)
-        self._search_subspaces_with_range(node.children3, x1, y1, x2, y2, result_image, overlapping_nodes)
+        self._search_subspaces_with_range(node.children0, x1, y1, x2, y2, result_image)
+        self._search_subspaces_with_range(node.children1, x1, y1, x2, y2, result_image)
+        self._search_subspaces_with_range(node.children2, x1, y1, x2, y2, result_image)
+        self._search_subspaces_with_range(node.children3, x1, y1, x2, y2, result_image)
 
     def overlaps(self, node, x1, y1, x2, y2):
         return not (x2 < node.x or x1 > node.x + node.width or y2 < node.y or y1 > node.y + node.height)
@@ -118,13 +115,11 @@ class QuadTree:
     def mask(self, x1, y1, x2, y2):
         masked_image = self.image
 
-        overlapping_nodes = []
-
-        self._mask(self.root, x1, y1, x2, y2, masked_image, overlapping_nodes)
+        self._mask(self.root, x1, y1, x2, y2, masked_image)
 
         return masked_image
 
-    def _mask(self, node, x1, y1, x2, y2, masked_image, overlapping_nodes):
+    def _mask(self, node, x1, y1, x2, y2, masked_image):
         if node is None or not self.overlaps(node, x1, y1, x2, y2):
             return
 
@@ -133,13 +128,12 @@ class QuadTree:
             for i in range(node.x, node.x + node.width):
                 for j in range(node.y, node.y + node.height):
                     masked_image[i][j] = (0, 0, 0)
-            overlapping_nodes.append(node)
             return
 
-        self._mask(node.children0, x1, y1, x2, y2, masked_image, overlapping_nodes)
-        self._mask(node.children1, x1, y1, x2, y2, masked_image, overlapping_nodes)
-        self._mask(node.children2, x1, y1, x2, y2, masked_image, overlapping_nodes)
-        self._mask(node.children3, x1, y1, x2, y2, masked_image, overlapping_nodes)
+        self._mask(node.children0, x1, y1, x2, y2, masked_image)
+        self._mask(node.children1, x1, y1, x2, y2, masked_image)
+        self._mask(node.children2, x1, y1, x2, y2, masked_image)
+        self._mask(node.children3, x1, y1, x2, y2, masked_image)
 
     def image_to_array(self, file_path):
         img = Image.open(file_path)
