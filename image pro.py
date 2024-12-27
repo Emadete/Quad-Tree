@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from PIL import Image
+
 class QuadTreeNode:
     def __init__(self, x, y, width, height):
         self.x = x
@@ -16,6 +17,7 @@ class QuadTreeNode:
 class LinkedList:
     def __init__(self):
         self.head = None
+
 
 class QuadTree:
     def __init__(self, image_array):
@@ -59,7 +61,7 @@ class QuadTree:
                 total_color_b += self.image[i][j][2]
                 count += 1
 
-        return (total_color_r // count, total_color_g // count, total_color_b // count) if count > 0 else 0
+        return (total_color_r // count, total_color_g // count, total_color_b // count) if count > 0 else (0, 0, 0)
 
     def tree_depth(self):
         return self.get_depth(self.root)
@@ -67,7 +69,8 @@ class QuadTree:
     def get_depth(self, node):
         if node.children0 == None and node.children1 == None and node.children2 == None and node.children3 == None:
             return 1
-        return 1 + max(self.get_depth(node.children0), self.get_depth(node.children1), self.get_depth(node.children2), self.get_depth(node.children3))
+        return 1 + max(self.get_depth(node.children0), self.get_depth(node.children1), self.get_depth(node.children2),
+                       self.get_depth(node.children3))
 
     def pixel_depth(self, px, py):
         return self.get_pixel_depth(self.root, px, py, 0)
@@ -89,53 +92,49 @@ class QuadTree:
         return max(depths)
 
     def search_subspaces_with_range(self, x1, y1, x2, y2):
-        result_image = [[(255, 255, 255) for _ in range(len(self.image[0]))] for _ in range(len(self.image))]
-
-        self._search_subspaces_with_range(self.root, x1, y1, x2, y2, result_image)
-
+        result_image = self._search_subspaces_with_range(self.root, x1, y1, x2, y2)
         return result_image
 
-    def _search_subspaces_with_range(self, node, x1, y1, x2, y2, result_image):
+    def _search_subspaces_with_range(self, node, x1, y1, x2, y2):
         if node is None or not self.overlaps(node, x1, y1, x2, y2):
-            return
+            return None
 
         if node.children0 == None and node.children1 == None and node.children2 == None and node.children3 == None:
+            sub_node = QuadTreeNode(node.x, node.y, node.width, node.height)
+            sub_node.color = node.color
+            return sub_node
 
-            for i in range(node.x, node.x + node.width):
-                for j in range(node.y, node.y + node.height):
-                    result_image[i][j] = node.color
-            return
+        sub_node = QuadTreeNode(node.x, node.y, node.width, node.height)
+        sub_node.children0 = self._search_subspaces_with_range(node.children0, x1, y1, x2, y2)
+        sub_node.children1 = self._search_subspaces_with_range(node.children1, x1, y1, x2, y2)
+        sub_node.children2 = self._search_subspaces_with_range(node.children2, x1, y1, x2, y2)
+        sub_node.children3 = self._search_subspaces_with_range(node.children3, x1, y1, x2, y2)
 
-        self._search_subspaces_with_range(node.children0, x1, y1, x2, y2, result_image)
-        self._search_subspaces_with_range(node.children1, x1, y1, x2, y2, result_image)
-        self._search_subspaces_with_range(node.children2, x1, y1, x2, y2, result_image)
-        self._search_subspaces_with_range(node.children3, x1, y1, x2, y2, result_image)
+        return sub_node
 
     def overlaps(self, node, x1, y1, x2, y2):
         return not (x2 < node.x or x1 > node.x + node.width or y2 < node.y or y1 > node.y + node.height)
 
     def mask(self, x1, y1, x2, y2):
-        masked_image = [row[:] for row in self.image]
-
-        self._mask(self.root, x1, y1, x2, y2, masked_image)
-
+        masked_image = self._mask(self.root, x1, y1, x2, y2)
         return masked_image
 
-    def _mask(self, node, x1, y1, x2, y2, masked_image):
+    def _mask(self, node, x1, y1, x2, y2):
         if node is None or not self.overlaps(node, x1, y1, x2, y2):
-            return
+            return None
 
         if node.children0 == None and node.children1 == None and node.children2 == None and node.children3 == None:
+            mask_node = QuadTreeNode(node.x, node.y, node.width, node.height)
+            mask_node.color = (0, 0, 0)
+            return mask_node
 
-            for i in range(node.x, node.x + node.width):
-                for j in range(node.y, node.y + node.height):
-                    masked_image[i][j] = (0, 0, 0)
-            return
+        mask_node = QuadTreeNode(node.x, node.y, node.width, node.height)
+        mask_node.children0 = self._mask(node.children0, x1, y1, x2, y2)
+        mask_node.children1 = self._mask(node.children1, x1, y1, x2, y2)
+        mask_node.children2 = self._mask(node.children2, x1, y1, x2, y2)
+        mask_node.children3 = self._mask(node.children3, x1, y1, x2, y2)
 
-        self._mask(node.children0, x1, y1, x2, y2, masked_image)
-        self._mask(node.children1, x1, y1, x2, y2, masked_image)
-        self._mask(node.children2, x1, y1, x2, y2, masked_image)
-        self._mask(node.children3, x1, y1, x2, y2, masked_image)
+        return mask_node
 
     def array_to_image(self, array):
         height = len(array)
@@ -152,29 +151,27 @@ class QuadTree:
 
         return img
 
-    def compress_depth(self, max_depth):
-        #compressed_image = [[None for _ in range(len(self.image[0]))] for _ in range(len(self.image))]
-        compressed_image = [[(0, 0, 0) for _ in range(len(self.image[0]))] for _ in range(len(self.image))]
-        self._build_limited_depth(self.root, max_depth, 0, compressed_image)
-        return compressed_image
+    def compress(self, max_depth):
+        compressed_tree_root = self.compress_tree(self.root, max_depth, 0)
+        return compressed_tree_root
 
-    def _build_limited_depth(self, node, max_depth, current_depth, compressed_image):
+    def compress_tree(self, node, max_depth, current_depth):
         if node is None:
-            return
+            return None
 
-        if current_depth == max_depth or (node.children0 == None and node.children1 == None and node.children2 == None and node.children3 == None):
-            avg_color = self.average_color(node.x, node.y, node.width, node.height)
+        if current_depth == max_depth or (node.children0 is None and node.children1 is None and node.children2 is None and node.children3 is None):
+            node.color = self.average_color(node.x, node.y, node.width, node.height)
+            compressed_node = QuadTreeNode(node.x, node.y, node.width, node.height)
+            compressed_node.color = node.color
+            return compressed_node
 
-            for i in range(node.x, node.x + node.width):
-                for j in range(node.y, node.y + node.height):
-                    if 0 <= i < len(self.image) and 0 <= j < len(self.image[0]):
-                        compressed_image[i][j] = avg_color
-            return
+        compressed_node = QuadTreeNode(node.x, node.y, node.width, node.height)
+        compressed_node.children0 = self.compress_tree(node.children0, max_depth, current_depth + 1)
+        compressed_node.children1 = self.compress_tree(node.children1, max_depth, current_depth + 1)
+        compressed_node.children2 = self.compress_tree(node.children2, max_depth, current_depth + 1)
+        compressed_node.children3 = self.compress_tree(node.children3, max_depth, current_depth + 1)
 
-        self._build_limited_depth(node.children0, max_depth, current_depth + 1, compressed_image)
-        self._build_limited_depth(node.children1, max_depth, current_depth + 1, compressed_image)
-        self._build_limited_depth(node.children2, max_depth, current_depth + 1, compressed_image)
-        self._build_limited_depth(node.children3, max_depth, current_depth + 1, compressed_image)
+        return compressed_node
 
 def image_to_array(file_path):
     img = Image.open(file_path)
@@ -189,6 +186,7 @@ def image_to_array(file_path):
         image_array.append(row)
 
     return image_array
+
 
 def process_video(video_path, output_video_path1, output_video_path2, output_video_path3, x1, y1, x2, y2, max_depth):
     cap = cv2.VideoCapture(video_path)
@@ -218,9 +216,9 @@ def process_video(video_path, output_video_path1, output_video_path2, output_vid
         search_frame1 = [list(map(list, row)) for row in search_frame]
         search_frame1 = np.array(search_frame1, dtype=np.uint8)
 
-        compress_frame = quad_tree.compress_depth(max_depth)
+        compress_frame = quad_tree.compress(max_depth)
         compress_frame1 = [list(map(list, row)) for row in compress_frame]
-        #compress_frame1 = [list(map(list, row)) for row in compress_frame if all(item is not None for item in row)]
+        # compress_frame1 = [list(map(list, row)) for row in compress_frame if all(item is not None for item in row)]
         compress_frame1 = np.array(compress_frame1, dtype=np.uint8)
 
         out_frame1 = cv2.cvtColor(masked_frame1.astype(np.uint8), cv2.COLOR_RGB2BGR)
@@ -236,8 +234,42 @@ def process_video(video_path, output_video_path1, output_video_path2, output_vid
     out2.release()
     out3.release()
 
+
+def show_compressed_tree(node, image):
+    if node is None:
+        return
+
+    if node.children0 is None and node.children1 is None and node.children2 is None and node.children3 is None:
+        for i in range(node.x, node.x + node.width):
+            for j in range(node.y, node.y + node.height):
+                if 0 <= i < len(image) and 0 <= j < len(image[0]):
+                    image[i][j] = node.color
+        return
+
+    show_compressed_tree(node.children0, image)
+    show_compressed_tree(node.children1, image)
+    show_compressed_tree(node.children2, image)
+    show_compressed_tree(node.children3, image)
+
+
+def array_to_imagee(array):
+    height = len(array)
+    width = len(array[0]) if height > 0 else 0
+
+    img = Image.new("RGB", (width, height))
+
+    for y in range(height):
+        for x in range(width):
+            if isinstance(array[y][x], tuple) and len(array[y][x]) == 3:
+                img.putpixel((x, y), array[y][x])
+            else:
+                img.putpixel((x, y), (0, 0, 0))
+
+    return img
+
+
 def main():
-    image = image_to_array(r"D:\personal\Photo\test.jpg")
+    image = image_to_array(r"Photo\test.jpg")
     quad_tree = QuadTree(image)
 
     depth = quad_tree.tree_depth()
@@ -246,19 +278,26 @@ def main():
     pixel_depth = quad_tree.pixel_depth(420, 450)
     print("Pixel Depth:", pixel_depth)
 
-    new_image_array = quad_tree.search_subspaces_with_range(1, 1, 480, 480)
-    new_image = quad_tree.array_to_image(new_image_array)
-    new_image.save(r"D:\personal\Photo\new_image.jpg")
+    space_tree = quad_tree.search_subspaces_with_range(1, 1, 480, 480)
+    new_image_array = [[(255, 255, 255) for _ in range(len(quad_tree.image[0]))] for _ in range(len(quad_tree.image))]
+    show_compressed_tree(space_tree, new_image_array)
+    new_image = array_to_imagee(new_image_array)
+    new_image.save(r"Photo\new_image.jpg")
 
-    masked_image_array = quad_tree.mask(1, 1, 480, 480)
-    masked_image = quad_tree.array_to_image(masked_image_array)
-    masked_image.save(r"D:\personal\Photo\masked_image.jpg")
+    mask_tree = quad_tree.mask(1, 1, 480, 480)
+    masked_image_array = [row[:] for row in quad_tree.image]
+    show_compressed_tree(mask_tree, masked_image_array)
+    masked_image = array_to_imagee(masked_image_array)
+    masked_image.save(r"Photo\masked_image.jpg")
 
-    compressed_image_array = quad_tree.compress_depth(15)
-    compressed_image = quad_tree.array_to_image(compressed_image_array)
-    compressed_image.save(r"D:\personal\Photo\compressed_image.jpg")
+    compressed_tree = quad_tree.compress(7)
+    visualized_image = [[(255, 255, 255) for _ in range(len(image[0]))] for _ in range(len(image))]
+    show_compressed_tree(compressed_tree, visualized_image)
+    visualized_pil_image = array_to_imagee(visualized_image)
+    visualized_pil_image.save(r"Photo\compress.jpg")
 
-    process_video(r"D:\personal\Photo\ftest.mp4", r"D:\personal\Photo\ftest1.avi", r"D:\personal\Photo\ftest2.avi", r"D:\personal\Photo\ftest3.avi", 2, 2, 480, 480, 9 )
+    # process_video(r"Photo\ftest.mp4", r"Photo\ftest1.avi", r"Photo\ftest2.avi", r"Photo\ftest3.avi", 2, 2, 480, 480, 9)
+
 
 if __name__ == "__main__":
     main()
