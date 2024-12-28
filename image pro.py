@@ -209,16 +209,21 @@ def process_video(video_path, output_video_path1, output_video_path2, output_vid
         quad_tree = QuadTree(image_array)
 
         masked_frame = quad_tree.mask(x1, y1, x2, y2)
-        masked_frame1 = [list(map(list, row)) for row in masked_frame]
+        masked_frame2 = [row[:] for row in quad_tree.image]
+        show_compressed_tree(masked_frame, masked_frame2)
+        masked_frame1 = [list(map(list, row)) for row in masked_frame2]
         masked_frame1 = np.array(masked_frame1, dtype=np.uint8)
 
         search_frame = quad_tree.search_subspaces_with_range(x1, y1, x2, y2)
-        search_frame1 = [list(map(list, row)) for row in search_frame]
+        search_frame2 = [[(255, 255, 255) for _ in range(len(quad_tree.image[0]))] for _ in range(len(quad_tree.image))]
+        show_compressed_tree(search_frame, search_frame2)
+        search_frame1 = [list(map(list, row)) for row in search_frame2]
         search_frame1 = np.array(search_frame1, dtype=np.uint8)
 
         compress_frame = quad_tree.compress(max_depth)
-        compress_frame1 = [list(map(list, row)) for row in compress_frame]
-        # compress_frame1 = [list(map(list, row)) for row in compress_frame if all(item is not None for item in row)]
+        compress_frame2 = [[(0, 0, 0) for _ in range(len(quad_tree.image[0]))] for _ in range(len(quad_tree.image))]
+        show_compressed_tree(compress_frame, compress_frame2)
+        compress_frame1 = [list(map(list, row)) for row in compress_frame2 if all(item is not None for item in row)]
         compress_frame1 = np.array(compress_frame1, dtype=np.uint8)
 
         out_frame1 = cv2.cvtColor(masked_frame1.astype(np.uint8), cv2.COLOR_RGB2BGR)
@@ -291,12 +296,12 @@ def main():
     masked_image.save(r"Photo\masked_image.jpg")
 
     compressed_tree = quad_tree.compress(7)
-    visualized_image = [[(255, 255, 255) for _ in range(len(image[0]))] for _ in range(len(image))]
+    visualized_image = [[(0, 0, 0) for _ in range(len(image[0]))] for _ in range(len(image))]
     show_compressed_tree(compressed_tree, visualized_image)
     visualized_pil_image = array_to_imagee(visualized_image)
     visualized_pil_image.save(r"Photo\compress.jpg")
 
-    # process_video(r"Photo\ftest.mp4", r"Photo\ftest1.avi", r"Photo\ftest2.avi", r"Photo\ftest3.avi", 2, 2, 480, 480, 9)
+    process_video(r"Photo\ftest.mp4", r"Photo\ftest1.avi", r"Photo\ftest2.avi", r"Photo\ftest3.avi", 2, 2, 480, 480, 5)
 
 
 if __name__ == "__main__":
