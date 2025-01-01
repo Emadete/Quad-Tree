@@ -1,3 +1,6 @@
+import csv
+import math
+
 import cv2
 import numpy as np
 from PIL import Image
@@ -272,9 +275,25 @@ def array_to_imagee(array):
 
     return img
 
+def read_file(path):
+    with open(path) as file:
+        file.readline()
+        result = []
+        for item in next(csv.reader(file)):
+            values = list(map(int, item.split(",")))
+            if len(values) == 1:
+                gray = values[0]
+                result.append((gray, gray, gray))
+            elif len(values) == 3:
+                r, g, b = reversed(values)
+                result.append((r, g, b))
+    length = int(math.sqrt(len(result)))
+    return [result[i : i + length] for i in range(0, length * length, length)]
+
 
 def main():
     image = image_to_array(r"Photo\test.jpg")
+    #image = read_file(r"Photo\image1_gray.csv")
     quad_tree = QuadTree(image)
 
     depth = quad_tree.tree_depth()
@@ -287,7 +306,7 @@ def main():
     new_image_array = [[(255, 255, 255) for _ in range(len(quad_tree.image[0]))] for _ in range(len(quad_tree.image))]
     show_compressed_tree(space_tree, new_image_array)
     new_image = array_to_imagee(new_image_array)
-    new_image.save(r"Photo\new_image.jpg")
+    new_image.save(r"Photo\search_image.jpg")
 
     mask_tree = quad_tree.mask(1, 1, 480, 480)
     masked_image_array = [row[:] for row in quad_tree.image]
@@ -299,7 +318,7 @@ def main():
     visualized_image = [[(0, 0, 0) for _ in range(len(image[0]))] for _ in range(len(image))]
     show_compressed_tree(compressed_tree, visualized_image)
     visualized_pil_image = array_to_imagee(visualized_image)
-    visualized_pil_image.save(r"Photo\compress.jpg")
+    visualized_pil_image.save(r"Photo\compress_image.jpg")
 
     process_video(r"Photo\ftest.mp4", r"Photo\ftest1.avi", r"Photo\ftest2.avi", r"Photo\ftest3.avi", 2, 2, 480, 480, 5)
 
